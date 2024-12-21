@@ -5,12 +5,17 @@ const port = 3000;
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const morgan = require('morgan');
+const session = require('express-session');
 
 const DATABASE_NAME = 'auth';
 const CONNECTION_STRING = `mongodb://localhost:27017/${DATABASE_NAME}`;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+app.use(session({
+  secret: 'secret'
+})
+)
 
 mongoose.connect(CONNECTION_STRING)
   .then(() => {
@@ -40,6 +45,7 @@ app.post('/register', async (req, res) => {
     password: hashedPassword
 })
    await user.save()
+   req.session.user_id = user._id;
    res.redirect('/');
 });
 
@@ -52,14 +58,17 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({username});
     const validUser = await bcrypt.compare(password, user.password);
     if(validUser){
-        //res.redirect('/secret');
-        res.send("Logged In");
+        req.session.user_id = user._id;
+        res.redirect('/secret');
     } else {
-        res.send("Invalid Credentials");
+        res.redirect('/login');
     }
 })
 
 app.get('/secret', (req, res) => {
+    if(!req.session.user_id){
+        res.redirect('/login');
+    }
     res.send('This is secret')
 })
 
